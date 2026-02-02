@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f3f4f6;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #111827;
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .logout {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+    }
+
+    th, td {
+      padding: 14px 12px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .badge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .active {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .banned {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .admin {
+      background: #e0e7ff;
+      color: #3730a3;
+    }
+
+    .btn {
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      margin-right: 4px;
+    }
+
+    .ban { background: #f59e0b; color: white; }
+    .unban { background: #22c55e; color: white; }
+    .delete { background: #ef4444; color: white; }
+
+    .ban:hover { background: #d97706; }
+    .unban:hover { background: #16a34a; }
+    .delete:hover { background: #dc2626; }
+
+    .top-info {
+      margin-bottom: 16px;
+      color: #374151;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>🔐 Admin Dashboard</h1>
+    <button class="logout" onclick="logout()">Đăng xuất</button>
+  </header>
+
+  <div class="container">
+    <div class="top-info" id="adminInfo"></div>
+
+    <h2>Quản lý tài khoản</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Trạng thái</th>
+          <th>Hành động</th>
+        </tr>
+      </thead>
+      <tbody id="userTable">
+        <!-- render bằng JS -->
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    // ===================== AUTH CHECK =====================
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");if (!token || !role) {
+      window.location.href = "/login";
+    }
+
+    if (role !== "ADMIN") {
+      window.location.href = "/shop";
+    }
+
+    // ===================== LOAD ADMIN INFO =====================
+    async function loadMe() {
+      const res = await fetch("/me", {
+        headers: { Authorization: "Bearer " + token }
+      });
+
+      if (!res.ok) {
+        localStorage.clear();
+        window.location.href = "/login";
+        return;
+      }
+
+      const data = await res.json();
+      document.getElementById("adminInfo").textContent =
+        `Xin chào ADMIN: ${data.email}`;
+    }
+
+    // ===================== LOAD USERS =====================
+    async function loadUsers() {
+      const res = await fetch("/admin/users", {
+        headers: { Authorization: "Bearer " + token }
+      });
+
+      if (!res.ok) {
+        alert("Không tải được danh sách user");
+        return;
+      }
+
+      const users = await res.json();
+      const tbody = document.getElementById("userTable");
+      tbody.innerHTML = "";
+
+      users.forEach(u => {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>${u.id}</td>
+          <td>${u.email}</td>
+          <td>
+            <span class="badge admin">${u.role}</span>
+          </td>
+          <td>
+            <span class="badge ${u.status === "ACTIVE" ? "active" : "banned"}">
+              ${u.status}
+            </span>
+          </td>
+          <td>
+            ${u.role !== "ADMIN" ? actionButtons(u) : ""}
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function actionButtons(u) {
+      let html = "";
+      if (u.status === "ACTIVE") {
+        html += `<button class="btn ban" onclick="banUser('${u.email}')">Ban</button>`;
+      } else {
+        html += `<button class="btn unban" onclick="unbanUser('${u.email}')">Unban</button>`;
+      }
+      html += `<button class="btn delete" onclick="deleteUser('${u.email}')">Xóa</button>`;
+      return html;
+    }
+
+    // ===================== ACTIONS =====================
+    async function banUser(email) {
+      if (!confirm(`Khóa tài khoản ${email}?`)) return;
+
+      await fetch("/admin/ban", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token
+        },
+        body: JSON.stringify({ email })
+      });
+
+      loadUsers();
+    }
+
+    async function unbanUser(email) {
+      await fetch("/admin/unban", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token
+        },
+        body: JSON.stringify({ email })
+      });
+
+      loadUsers();
+    }
+
+    async function deleteUser(email) {
+      if (!confirm(`XÓA VĨNH VIỄN tài khoản ${email}?`)) return;
+
+      await fetch("/admin/delete", {
+        method: "DELETE",headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token
+        },
+        body: JSON.stringify({ email })
+      });
+
+      loadUsers();
+    }
+
+    // ===================== LOGOUT =====================
+    function logout() {
+      localStorage.clear();
+      window.location.href = "/login";
+    }
+
+    // ===================== INIT =====================
+    loadMe();
+    loadUsers();
+  </script>
+</body>
+</html>

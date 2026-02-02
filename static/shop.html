@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Shop</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f8fafc;
+      min-height: 100vh;
+    }
+
+    header {
+      background: white;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .logout {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .logout:hover {
+      background: #dc2626;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+
+    .welcome {
+      margin-bottom: 24px;
+      color: #374151;
+    }
+
+    .products {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.06);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      border-radius: 10px;
+      background: #e5e7eb;
+      margin-bottom: 12px;
+    }
+
+    .card h3 {
+      margin: 0 0 6px;
+      font-size: 16px;
+    }
+
+    .price {
+      color: #4f46e5;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .desc {
+      font-size: 14px;
+      color: #6b7280;
+      flex-grow: 1;
+    }
+
+    .buy {
+      margin-top: 12px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .buy:hover {
+      background: #4338ca;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>🛒 Shop Online</h1>
+    <button class="logout" onclick="logout()">Đăng xuất</button>
+  </header>
+
+  <div class="container">
+    <div class="welcome" id="welcome"></div>
+
+    <h2>Sản phẩm nổi bật</h2>
+
+    <div class="products" id="productList">
+      <!-- sản phẩm render bằng JS -->
+    </div>
+  </div>
+
+  <script>
+    // ===================== AUTH CHECK =====================
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+
+    if (!token || !role) {
+      window.location.href = "/login";
+    }
+
+    if (role === "ADMIN") {
+      window.location.href = "/admin";
+    }
+
+    // ===================== LOAD USER INFO =====================
+    async function loadMe() {
+      const res = await fetch("/me", {
+        headers: {
+          "Authorization": "Bearer " + token
+        }
+      });
+
+      if (!res.ok) {
+        localStorage.clear();window.location.href = "/login";
+        return;
+      }
+
+      const data = await res.json();
+      document.getElementById("welcome").textContent =
+        `Xin chào ${data.email} 👋`;
+    }
+
+    // ===================== DEMO PRODUCTS =====================
+    const products = [
+      {
+        name: "Tai nghe Bluetooth",
+        price: 150000,
+        desc: "Chống ồn, pin 40h",
+        img: ""
+      },
+      {
+        name: "Chuột gaming",
+        price: 320000,
+        desc: "DPI cao, RGB",
+        img: ""
+      },
+      {
+        name: "Bàn phím cơ",
+        price: 750000,
+        desc: "Switch Blue, LED",
+        img: ""
+      }
+    ];
+
+    function renderProducts() {
+      const list = document.getElementById("productList");
+      list.innerHTML = "";
+
+      products.forEach(p => {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        card.innerHTML = `
+          <img src="${p.img}" alt="">
+          <h3>${p.name}</h3>
+          <div class="price">${p.price.toLocaleString()} đ</div>
+          <div class="desc">${p.desc}</div>
+          <button class="buy">Mua ngay</button>
+        `;
+
+        list.appendChild(card);
+      });
+    }
+
+    // ===================== LOGOUT =====================
+    function logout() {
+      localStorage.clear();
+      window.location.href = "/login";
+    }
+
+    // ===================== INIT =====================
+    loadMe();
+    renderProducts();
+  </script>
+</body>
+</html>
